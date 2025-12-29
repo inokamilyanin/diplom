@@ -1,8 +1,6 @@
 import numpy as np
 from clustering import KMeansPatternClustering
-from clustering import DBSCANPatternClustering
 from clustering import WishartPatternClustering
-from utils import generate_z_vectors
 
 
 class MultiPatternPredictor:

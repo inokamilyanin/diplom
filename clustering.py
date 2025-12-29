@@ -1,8 +1,7 @@
 import numpy as np
+from scipy.special import gamma
 from sklearn.cluster import KMeans
-from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import minmax_scale
 
 
 class KMeansPatternClustering:
@@ -92,68 +91,94 @@ class WishartClustering:
 
         # d_r(x)
         dr = distances[:, -1]
-        print(distances.shape)
+        # print(X.shape, distances.shape, dr.shape)
 
         # сортировка по d_r
         order = np.argsort(dr)
 
-        # плотность p(x) ~ r / (V_r * n), V_r ~ d_r^d
-        density = self.r / (np.power(dr, dim) * n + 1e-12)
+        # коэффициент объёма d-мерного единичного шара
+        Cd = (np.pi ** (dim / 2)) / gamma(dim / 2 + 1)
+
+        # V_r(x)
+        Vr = Cd * (dr ** dim)
+
+        # p(x) = r / (V_r(x) * n)
+        density = self.r / (Vr * n)
 
         labels = np.zeros(n, dtype=int)
         completed = {}
         current_cluster = 0
 
-        def is_significant(cluster_id, new_point):
-            pts = np.where(labels == cluster_id)[0]
-            if len(pts) == 0:
-                return False
-            p_vals = density[pts]
-            return np.max(np.abs(p_vals - density[new_point])) >= self.mu
+        processed = []
+        labels = np.zeros(n, dtype=int)
+        completed = {}
+        current_cluster = 0
 
         for q in order:
-            neighbors = indices[q][1:]  # без самой точки
-            connected = [
-                labels[j] for j in neighbors
-                if dr[j] >= np.linalg.norm(X[q] - X[j])
-            ]
-            connected = [c for c in connected if c != 0]
+            # print(dr[q]) ascending order
+            processed.append(q)
 
-            if len(connected) == 0:
+            connected_clusters = set()
+
+            for j in processed:
+                if j == q:
+                    continue
+                if np.linalg.norm(X[q] - X[j]) <= dr[q]:
+                    if labels[j] != 0:
+                        connected_clusters.add(labels[j])
+
+            # isolated vertex -> new cluster
+            if len(connected_clusters) == 0:
                 current_cluster += 1
                 labels[q] = current_cluster
                 completed[current_cluster] = False
                 continue
 
-            unique_clusters = list(set(connected))
-
-            if len(unique_clusters) == 1:
-                c = unique_clusters[0]
-                if completed[c]:
+            # connected to one cluster
+            if len(connected_clusters) == 1:
+                l = next(iter(connected_clusters))
+                if completed[l]:
                     labels[q] = 0
                 else:
-                    labels[q] = c
+                    labels[q] = l
                 continue
 
-            # несколько кластеров
-            significant = [
-                c for c in unique_clusters if is_significant(c, q)
-            ]
+            # connected to several clusters
+            active = [c for c in connected_clusters if not completed[c]]
 
-            if len(significant) != 1:
+            if len(active) == 0:
+                labels[q] = 0
+                continue
+
+            significant = []
+            for c in active:
+                pts = np.where(labels == c)[0]
+                p_vals = density[pts]
+                if np.max(p_vals) - np.min(p_vals) >= self.mu:
+                    significant.append(c)
+
+            # CHECK LOGIC
+            if len(significant) == 0:
+                labels[q] = 0
+                for c in active:
+                    completed[c] = True
+                continue
+
+            if len(significant) > 1 or 0 in connected_clusters:
                 labels[q] = 0
                 for c in significant:
                     completed[c] = True
-                continue
-
-            # объединение
-            main = significant[0]
-            for c in unique_clusters:
-                if c != main:
-                    labels[labels == c] = main
-                    completed[c] = True
-
-            labels[q] = main
+                for c in connected_clusters:
+                    if c not in significant:
+                        labels[labels == c] = 0
+            else:
+                if len(significant) == 0:
+                    raise Exception("No significant clusters")
+                centre = significant[0]
+                labels[q] = centre
+                for c in connected_clusters:
+                    if c != centre:
+                        labels[labels == c] = centre
 
         self.labels_ = labels
 

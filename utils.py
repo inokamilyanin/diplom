@@ -95,6 +95,13 @@ def zscore_normalize(series, mean=None, std=None):
         std = np.std(series)
     return (series - mean) / std, mean, std
 
+def minmax_normalize(series, min=None, max=None):
+    if min is None:
+        min = np.min(series)
+    if max is None:
+        max = np.max(series)
+    return (series - min) / (max - min), min, max
+
 if __name__ == "__main__":
     data = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     patterns = [np.array([4, 1, 0])]
