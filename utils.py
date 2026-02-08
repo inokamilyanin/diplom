@@ -95,7 +95,7 @@ def zscore_normalize(series, mean=None, std=None):
         std = np.std(series)
     return (series - mean) / std, mean, std
 
-def minmax_normalize(series, min=None, max=None):
+def min_max_normalize(series, min=None, max=None):
     if min is None:
         min = np.min(series)
     if max is None:

@@ -1,6 +1,5 @@
 import numpy as np
-from clustering import KMeansPatternClustering
-from clustering import WishartPatternClustering
+from clustering import KMeansPatternClustering, WishartPatternClustering, DBSCANPatternClustering
 
 
 class MultiPatternPredictor:
@@ -48,6 +47,15 @@ class MultiPatternPredictor:
                         r=r,
                         mu=mu,
                         min_cluster_size=min_cluster_size
+                    )
+                )
+            elif cluster_method == 'wishart_fast':
+                self.clusterings.append(
+                    WishartPatternClustering(
+                        r=r,
+                        mu=mu,
+                        min_cluster_size=min_cluster_size,
+                        fast=True
                     )
                 )
             else:
